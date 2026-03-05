@@ -1,196 +1,169 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchCurrentUser } from "../../slices/authSlice";
+import { accountApi } from "../../config/api";
 import SpendAnalyzer from "./SpendAnalyzer";
-import QuickLinks from "../HomePage/QuickLinks";
-import PersonalizedOffers from "../HomePage/PersonalizedOffers";
-import { getCurrentUser } from "../../Services/authService";
-import bankingService from "../../Services/bankingService";
-import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 import "./Dashboard.css";
 
 function Dashboard() {
-  const [user, setUser] = useState(null);
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(0);
-  const [showBalance, setShowBalance] = useState(false);
 
   useEffect(() => {
-    async function fetchUserDataAndBalance() {
+    async function fetchData() {
       try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-
-        if (currentUser?.accountNumber) {
-          const initialTransactions = await bankingService.fetchTransactions(
-            currentUser.accountNumber
-          );
-          setTransactions(initialTransactions);
-
-          const userBalance = await bankingService.getBalance(
-            currentUser.accountNumber
-          );
-          setBalance(userBalance);
+        // Fetch user if not already in state
+        if (!user) {
+          await dispatch(fetchCurrentUser());
         }
       } catch (error) {
-        console.error("Error fetching user data or transactions:", error);
+        console.error("Error fetching user:", error);
       } finally {
         setLoading(false);
       }
     }
+    fetchData();
+  }, [dispatch, user]);
 
-    fetchUserDataAndBalance();
-  }, []); // Removed transactions from dependencies to avoid infinite loop
+  // Fetch account data when user is available
+  useEffect(() => {
+    async function fetchAccountData() {
+      if (!user?.accountNumber) return;
+      try {
+        const [txResp, balResp] = await Promise.all([
+          accountApi.get(`/accounts/transactions/${user.accountNumber}`).catch(() => ({ data: [] })),
+          accountApi.get(`/accounts/balance/${user.accountNumber}`).catch(() => ({ data: 0 })),
+        ]);
+        setTransactions(Array.isArray(txResp.data) ? txResp.data : []);
+        setBalance(balResp.data || 0);
+      } catch (error) {
+        console.error("Error fetching account data:", error);
+      }
+    }
+    fetchAccountData();
+  }, [user]);
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
-    return hour < 12
-      ? "Good morning"
-      : hour < 18
-      ? "Good afternoon"
-      : "Good evening";
+    return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const getCategoryIcon = (category) => {
+    const icons = {
+      FOOD: '🍔', TRANSPORT: '🚗', SHOPPING: '🛍️', ENTERTAINMENT: '🎬',
+      UTILITIES: '💡', HEALTHCARE: '🏥', EDUCATION: '📚', RENT: '🏠',
+      SALARY: '💰', OTHER: '📦',
+    };
+    return icons[category] || '📦';
+  };
+
+  // Calculate stats
+  const totalExpenses = transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+  const recentTransactions = transactions.slice(0, 8);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="dashboard-loading">
+        <div className="spinner" style={{ width: 40, height: 40 }}></div>
+        <p>Loading your dashboard...</p>
+      </div>
+    );
   }
 
-  // Aggregating small categories into "Other"
-  const aggregateCategories = (transactions, threshold = 0.05) => {
-    const sum = transactions.reduce((acc, curr) => acc + curr.amount, 0);
-    const categoryCounts = transactions.reduce((acc, { category, amount }) => {
-      acc[category] = (acc[category] || 0) + amount;
-      return acc;
-    }, {});
-
-    const aggregatedData = Object.entries(categoryCounts).reduce(
-      (acc, [category, amount]) => {
-        if (amount / sum < threshold) {
-          acc["Other"] = (acc["Other"] || 0) + amount;
-        } else {
-          acc[category] = amount;
-        }
-        return acc;
-      },
-      {}
-    );
-
-    return aggregatedData;
-  };
-
-  const accumulatedData = aggregateCategories(transactions);
-
-  const data = Object.keys(accumulatedData).map((category) => ({
-    name: category,
-    value: accumulatedData[category],
-  }));
-
-  const COLORS = [
-    "#0088FE",
-    "#00C49F",
-    "#FFBB28",
-    "#FF8042",
-    "#8884d8",
-    "#82ca9d",
-  ];
-
-  const userGreeting = `${getTimeBasedGreeting()}, ${
-    user?.firstName?.trim()
-      ? `${user.firstName} ${user.lastName || "User"}`
-      : "User"
-  }!`;
-
-  const toggleBalanceView = () => setShowBalance(!showBalance);
+  const displayName = user?.firstName?.trim()
+    ? `${user.firstName} ${user.lastName || ''}`
+    : 'User';
 
   return (
-    <div className="dashboard">
-      <nav className="navbar">
-        <div className="nav-brand">
-          <h1>Future Bank</h1>
-        </div>
-        <ul className="nav-links">
-          <li>
-            <Link to="/accounts-summary">Accounts Summary</Link>
-          </li>
-          <li>
-            <Link to="/fund-transfer">Fund Transfer</Link>
-          </li>
-          <li>
-            <Link to="/payments-bills">Payments & Bills</Link>
-          </li>
-          <li>
-            <Link to="/profile-management">Profile Management</Link>
-          </li>
-          <li>
-            <Link to="/customer-support">Customer Support</Link>
-          </li>
-          <li>
-            <Link to="/logout">Logout</Link>
-          </li>
-        </ul>
-      </nav>
+    <div className="dashboard-page">
+      {/* Greeting */}
+      <div className="dashboard-greeting">
+        <h1>{getTimeBasedGreeting()}, {displayName}! 👋</h1>
+        <p>Here's your financial overview for today</p>
+      </div>
 
-      <header className="dashboard-header">
-        <div className="user-greeting">{userGreeting}</div>
-        <button className="view-balance-btn" onClick={toggleBalanceView}>
-          {showBalance ? "Hide Balance" : "View Balance"}{" "}
-          {/* Corrected the button text for toggling */}
-        </button>
-        {showBalance && (
-          <div className="user-balance">Balance: ${balance.toFixed(2)}</div>
-        )}
-      </header>
-
-      <div className="main-container">
-        <div className="dashboard-content">
-          <QuickLinks />
-          <PersonalizedOffers />
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card slide-up" style={{ animationDelay: '0s' }}>
+          <div className="stat-card-header">
+            <span className="stat-card-label">Total Balance</span>
+            <div className="stat-card-icon balance">💰</div>
+          </div>
+          <div className="stat-card-value">{formatCurrency(balance)}</div>
+          <span className="stat-card-change positive">Account #{user?.accountNumber}</span>
         </div>
-        <div>
+
+        <div className="stat-card slide-up" style={{ animationDelay: '0.1s' }}>
+          <div className="stat-card-header">
+            <span className="stat-card-label">Total Expenses</span>
+            <div className="stat-card-icon expense">📉</div>
+          </div>
+          <div className="stat-card-value">{formatCurrency(totalExpenses)}</div>
+          <span className="stat-card-change negative">{transactions.length} transactions</span>
+        </div>
+
+        <div className="stat-card slide-up" style={{ animationDelay: '0.2s' }}>
+          <div className="stat-card-header">
+            <span className="stat-card-label">Transactions</span>
+            <div className="stat-card-icon transfers">📊</div>
+          </div>
+          <div className="stat-card-value">{transactions.length}</div>
+          <span className="stat-card-change positive">This period</span>
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="dashboard-grid">
+        {/* Spend Analyzer */}
+        <div className="chart-card">
+          <h2>Spending Analysis</h2>
           <SpendAnalyzer transactions={transactions} />
         </div>
 
-        <div className="expenditure-chart">
-          <div style={{ color: "black", fontSize: "25px" }}>
-            <h2>Expenditure Breakdown</h2>
-          </div>
-
-          <PieChart width={400} height={600}>
-            {" "}
-            {/* Adjust dimensions as needed */}
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              outerRadius={150} // Adjust radius as needed
-              fill="#8884d8"
-              dataKey="value"
-              nameKey="name"
-              label={({ name, percent }) => {
-                if (name.length > 10) {
-                  return `${name.slice(0, 10)}... ${(percent * 100).toFixed(
-                    0
-                  )}%`; // Truncate long names
-                } else {
-                  return `${name} ${(percent * 100).toFixed(0)}%`;
-                }
-              }}
-              startAngle={0}
-              endAngle={360}
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ fontSize: "14px" }} // Adjust tooltip font size
-              labelStyle={{ color: "#000", fontSize: "14px" }} // Adjust tooltip label font size and color
-            />
-            <Legend />
-          </PieChart>
+        {/* Recent Transactions */}
+        <div className="transactions-card">
+          <h2>Recent Transactions</h2>
+          {recentTransactions.length > 0 ? (
+            recentTransactions.map((tx, index) => (
+              <div className="transaction-item" key={tx.transactionId || index}>
+                <div className="transaction-info">
+                  <div className="transaction-icon">
+                    {getCategoryIcon(tx.category)}
+                  </div>
+                  <div className="transaction-details">
+                    <div className="transaction-name">
+                      {tx.category || 'Transaction'}
+                    </div>
+                    <div className="transaction-date">
+                      {tx.transactionDate
+                        ? new Date(tx.transactionDate).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                        })
+                        : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                <div className="transaction-amount debit">
+                  -{formatCurrency(tx.amount)}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-8)' }}>
+              No transactions yet
+            </p>
+          )}
         </div>
       </div>
     </div>

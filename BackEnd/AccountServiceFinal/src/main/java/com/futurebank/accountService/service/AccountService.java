@@ -4,10 +4,16 @@ import com.futurebank.accountService.model.Account;
 import java.util.List;
 
 public interface AccountService {
-   
+
     Account updateAccount(Long accountId, Account accountDetails);
+
     List<Account> getAllAccounts();
+
     Account getAccountById(Long accountId);
+
     boolean deleteAccount(Long accountId);
-	Account createAccount(Long userId, String accountType);
+
+    Account createAccount(Long userId, String accountType);
+
+    java.math.BigDecimal getAccountBalance(Long accountId);
 }

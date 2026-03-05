@@ -18,7 +18,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${cors.allowedHeaders:*}")
     private String[] allowedHeaders;
 
-    @Value("${cors.allowCredentials:false}")
+    @Value("${cors.allowCredentials:true}")
     private boolean allowCredentials;
 
     @Value("${cors.maxAge:3600}") // 1 hour
@@ -27,10 +27,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-            .allowedOrigins(allowedOrigins)
-            .allowedMethods(allowedMethods)
-            .allowedHeaders(allowedHeaders)
-            .allowCredentials(allowCredentials)
-            .maxAge(maxAge);
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods(allowedMethods)
+                .allowedHeaders(allowedHeaders)
+                .allowCredentials(allowCredentials)
+                .maxAge(maxAge);
     }
 }

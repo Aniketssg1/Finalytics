@@ -10,19 +10,20 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Getter
 @Setter
-@NoArgsConstructor // Lombok annotation to generate a no-args constructor
+@NoArgsConstructor
+@ToString(exclude = { "fromAccount", "toAccount" })
 @Entity
-@Table(name = "transactions") // Specify table name for clarity
+@Table(name = "transactions")
 public class Transaction {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long transactionId;
 
-    // Assuming Account is another entity class that represents the account details
     @ManyToOne
     @JoinColumn(name = "fromAccountId", nullable = false)
     private Account fromAccount;
@@ -33,11 +34,11 @@ public class Transaction {
 
     @NotNull(message = "Amount cannot be null")
     @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
-    @Column(nullable = false, precision = 19, scale = 4) // Define precision and scale for financial amount
+    @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
-    
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50) // Specify length according to the longest enum value
+    @Column(nullable = false, length = 50)
     private MyTransactionCategory category;
 
     @CreationTimestamp
@@ -49,13 +50,5 @@ public class Transaction {
         this.toAccount = toAccount;
         this.amount = amount;
         this.category = category;
-        // transactionDate is set automatically by @CreationTimestamp
     }
-
-	public void setAccount(Account account) {
-		// TODO Auto-generated method stub
-		
-	}
-
-    // Note: Lombok @Getter, @Setter, and @NoArgsConstructor annotations are utilized, so explicit getters, setters, and a no-args constructor are not manually defined.
 }

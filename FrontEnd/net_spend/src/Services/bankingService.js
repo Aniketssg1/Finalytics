@@ -1,126 +1,46 @@
-class BankingService {
-  // Base URL for your banking API
-  static baseUrl = 'http://localhost:8083/api/accounts';
+// bankingService.js — Refactored to use Axios via centralized API config
+import { accountApi } from '../config/api';
 
-  // Token management for demonstration purposes
-  // In a real application, consider using a more secure and dynamic way to manage tokens
-  static authToken = localStorage.getItem('userToken');
+const bankingService = {
+  async createAccount(accountData) {
+    const response = await accountApi.post('/accounts', accountData);
+    return response.data;
+  },
 
-  // Method to update the authToken
-  static updateAuthToken(token) {
-    this.authToken = token;
-  }
+  async updateAccountInfo(accountId, accountInfo) {
+    const response = await accountApi.put(`/accounts/${accountId}`, accountInfo);
+    return response.data;
+  },
 
-  // Create a new account
-  static async createAccount(accountData) {
-    const url = `${this.baseUrl}/`;
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`,
-      },
-      body: JSON.stringify(accountData),
-    };
+  async getAccountSummary(accountId) {
+    const response = await accountApi.get(`/accounts/transactions/${accountId}`);
+    return response.data;
+  },
 
-    return this.performFetch(url, options);
-  }
+  async deleteAccount(accountId) {
+    const response = await accountApi.delete(`/accounts/${accountId}`);
+    return response.data;
+  },
 
-  // Update account information
-  static async updateAccountInfo(accountId, accountInfo) {
-    const url = `${this.baseUrl}/${accountId}`;
-    const options = {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`,
-      },
-      body: JSON.stringify(accountInfo),
-    };
+  async transferFunds(transferDetails) {
+    const response = await accountApi.post('/accounts/transfers', transferDetails);
+    return response.data;
+  },
 
-    return this.performFetch(url, options);
-  }
+  async fetchTransactions(accountId) {
+    const response = await accountApi.get(`/accounts/transactions/${accountId}`);
+    return response.data;
+  },
 
-  // Fetch single account summary
-  static async getAccountSummary(accountId) {
-    const url = `${this.baseUrl}/transactions/${accountId}`;
-    return this.performFetch(url, this.getOptions('GET'));
-  }
+  async getAllAccounts() {
+    const response = await accountApi.get('/accounts');
+    return response.data;
+  },
 
-  // Delete an account
-  static async deleteAccount(accountId) {
-    const url = `${this.baseUrl}/${accountId}`;
-    return this.performFetch(url, this.getOptions('DELETE'));
-  }
+  async getBalance(accountId) {
+    const response = await accountApi.get(`/accounts/balance/${accountId}`);
+    return response.data;
+  },
+};
 
-  // Initiate a fund transfer
-  static async transferFunds(transferDetails) {
-    const url = `${this.baseUrl}/transfers`;
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`,
-      },
-      body: JSON.stringify(transferDetails),
-    };
-
-    return this.performFetch(url, options);
-  }
-
-  // Fetch the transactions for an account
-  static async fetchTransactions(accountId) {
-    const url = `${this.baseUrl}/transactions/${accountId}`;
-    return this.performFetch(url, this.getOptions('GET'));
-  }
-
-  // Get all accounts
-  static async getAllAccounts() {
-    const url = `${this.baseUrl}/`;
-    return this.performFetch(url, this.getOptions('GET'));
-  }
-
-  // New method to get account balance
-  static async getBalance(accountId) {
-    const url = `${this.baseUrl}/balance/${accountId}`;
-    return this.performFetch(url, this.getOptions('GET'));
-  }
-
-  // Utility method to handle fetch operations
-  static async performFetch(url, options) {
-    try {
-      const response = await fetch(url, options);
-      return this.handleResponse(response);
-    } catch (error) {
-      return this.handleError(error);
-    }
-  }
-
-  // Generate options object for fetch calls
-  static getOptions(method) {
-    return {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`,
-      },
-    };
-  }
-
-  // Utility method to handle response
-  static async handleResponse(response) {
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Network response was not ok: ${error}`);
-    }
-    return response.json();
-  }
-
-  // Utility method to handle errors
-  static handleError(error) {
-    console.error('There was a problem with the fetch operation:', error);
-    throw error; // Rethrow the error so it can be caught by the calling code
-  }
-}
-
-export default BankingService;
+export default bankingService;

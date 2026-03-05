@@ -1,7 +1,7 @@
 package com.futurebank.authservice.client;
 
 import java.util.HashMap;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -14,11 +14,12 @@ public class AccountClient {
 
     private static final Logger logger = LoggerFactory.getLogger(AccountClient.class);
     private final RestTemplate restTemplate;
-    private final String accountServiceUrl = "http://localhost:8083/api/accounts"; // Adjust based on actual URL
+    private final String accountServiceUrl;
 
-    @Autowired
-    public AccountClient(RestTemplate restTemplate) {
+    public AccountClient(RestTemplate restTemplate,
+            @Value("${account.service.url:http://localhost:8083}") String accountServiceBaseUrl) {
         this.restTemplate = restTemplate;
+        this.accountServiceUrl = accountServiceBaseUrl + "/api/accounts";
     }
 
     public Long createAccountForUser(User user, String accountType) {
@@ -28,7 +29,8 @@ public class AccountClient {
         logger.info("Attempting to create account for user ID: {}", user.getUserId());
 
         try {
-            ResponseEntity<AccountCreationResponse> response = restTemplate.postForEntity(accountServiceUrl, request, AccountCreationResponse.class);
+            ResponseEntity<AccountCreationResponse> response = restTemplate.postForEntity(
+                    accountServiceUrl, request, AccountCreationResponse.class);
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 logger.info("Account successfully created for user ID: {}", user.getUserId());
                 return response.getBody().getAccountNumber();
@@ -38,6 +40,6 @@ public class AccountClient {
         } catch (Exception e) {
             logger.error("Exception occurred while creating account for user ID: {}", user.getUserId(), e);
         }
-        return null; // Consider changing this to Optional<Long> for better clarity on method outcome
+        return null;
     }
 }

@@ -1,84 +1,134 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
-import './LoginPage.css'; // Import custom CSS
+import { useDispatch, useSelector } from 'react-redux';
+import { loginUser, clearError } from '../../slices/authSlice';
+import './LoginPage.css';
 
 function LoginPage() {
     const [credentials, setCredentials] = useState({ username: '', password: '' });
-    const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((state) => state.auth);
 
     const handleChange = (event) => {
         const { name, value } = event.target;
-        setCredentials(prevCredentials => ({
-            ...prevCredentials,
-            [name]: value
-        }));
+        setCredentials((prev) => ({ ...prev, [name]: value }));
+        if (error) dispatch(clearError());
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setError('');
-
-        try {
-            const response = await fetch('http://localhost:8082/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(credentials),
-            });
-
-            const responseBody = await response.text();
-
-            try {
-                const data = JSON.parse(responseBody);
-                if (response.ok) {
-                    localStorage.setItem('userToken', data.token);
-                    navigate('/dashboard');
-                } else {
-                    setError(data.message || 'Incorrect username or password');
-                }
-            } catch (error) {
-                setError('Server response was not in valid JSON format. Please try again later.');
-            }
-        } catch (error) {
-            setError('An error occurred during login. Please try again later.');
+        const result = await dispatch(loginUser(credentials));
+        if (loginUser.fulfilled.match(result)) {
+            navigate('/dashboard');
         }
     };
 
     return (
-        <div className="container-fluid py-5">
-            <div className="row justify-content-center">
-                <div className="col-md-6 col-lg-4">
-                    <div className="login-container card shadow">
-                        <div className="card-body">
-                            <h1 className="card-title text-center">Welcome to Future Bank</h1>
-                            {error && <div className="alert alert-danger" role="alert">{error}</div>}
-                            <form onSubmit={handleSubmit}>
-                                <div className="mb-3">
-                                    <label htmlFor="username" className="form-label">Username</label>
-                                    <input type="text" className="form-control" id="username" name="username" value={credentials.username} onChange={handleChange} required />
-                                </div>
-                                <div className="mb-3">
-                                    <label htmlFor="password" className="form-label">Password</label>
-                                    <input type="password" className="form-control" id="password" name="password" value={credentials.password} onChange={handleChange} required />
-                                </div>
-                                <button type="submit" className="btn btn-primary w-100">Log In</button>
-                                <div className="mt-3 text-center">
-                                    {/* Bootstrap buttons for "Forgot Password?" and "Register" */}
-                                    <button type="button" className="btn btn-secondary" onClick={() => navigate('/forgot-password')}>Forgot Password?</button>
-                                    <button type="button" className="btn btn-secondary" onClick={() => navigate('/register')}>Register</button>
-                                </div>
-                            </form>
+        <div className="login-page">
+            {/* Brand Panel */}
+            <div className="login-brand-panel">
+                <div className="brand-content">
+                    <div className="brand-logo">FutureBank</div>
+                    <p className="brand-tagline">
+                        Smart banking for a smarter future. Track, analyze, and grow your wealth.
+                    </p>
+                    <ul className="brand-features">
+                        <li>
+                            <span className="feature-icon">📊</span>
+                            AI-Powered Spend Analysis
+                        </li>
+                        <li>
+                            <span className="feature-icon">🔒</span>
+                            Bank-Grade Security
+                        </li>
+                        <li>
+                            <span className="feature-icon">⚡</span>
+                            Instant Fund Transfers
+                        </li>
+                        <li>
+                            <span className="feature-icon">📈</span>
+                            Expenditure Forecasting
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            {/* Form Panel */}
+            <div className="login-form-panel">
+                <div className="login-form-container">
+                    <h1>Welcome back</h1>
+                    <p className="subtitle">Sign in to your FutureBank account</p>
+
+                    {error && <div className="login-error">{error}</div>}
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label htmlFor="username">Username</label>
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                value={credentials.username}
+                                onChange={handleChange}
+                                placeholder="Enter your username"
+                                required
+                                autoComplete="username"
+                            />
                         </div>
-                    </div>
-                    <div className="security-tips mt-4">
-                        <h3>Security Tips:</h3>
+
+                        <div className="form-group">
+                            <label htmlFor="password">Password</label>
+                            <div className="password-field">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="password"
+                                    name="password"
+                                    value={credentials.password}
+                                    onChange={handleChange}
+                                    placeholder="Enter your password"
+                                    required
+                                    autoComplete="current-password"
+                                />
+                                <button
+                                    type="button"
+                                    className="password-toggle"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? '🙈' : '👁️'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" className="login-btn" disabled={loading}>
+                            {loading ? (
+                                <>
+                                    <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }}></span>
+                                    Signing in...
+                                </>
+                            ) : (
+                                'Sign In'
+                            )}
+                        </button>
+
+                        <div className="form-footer">
+                            <button type="button" onClick={() => navigate('/forgot-password')}>
+                                Forgot password?
+                            </button>
+                            <button type="button" onClick={() => navigate('/register')}>
+                                Create account
+                            </button>
+                        </div>
+                    </form>
+
+                    <div className="security-tips">
+                        <h4>Security Tips</h4>
                         <ul>
-                            <li>Do not share your username and password with anyone.</li>
-                            <li>Always log out after completing your session.</li>
-                            <li>Ensure your computer is protected with up-to-date antivirus software.</li>
+                            <li>Never share your credentials with anyone</li>
+                            <li>Always log out after your session</li>
+                            <li>Use a strong, unique password</li>
                         </ul>
                     </div>
                 </div>

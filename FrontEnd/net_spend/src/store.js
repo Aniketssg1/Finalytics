@@ -1,13 +1,9 @@
 // src/store.js
 import { configureStore } from '@reduxjs/toolkit';
-
-// Import your slice reducers
-// import yourSlice from './slices/yourSlice';
+import authSlice from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
-    // Register your state slices here
-    // yourSlice: yourSlice.reducer,
+    auth: authSlice.reducer,
   },
-  // Middleware and DevTools are automatically configured by Redux Toolkit
 });
