@@ -225,7 +225,3 @@ Swagger UI is available once the services are running:
 5. Open a Pull Request
 
 ---
-
-## 📄 License
-
-This project is for educational / demonstration purposes.
